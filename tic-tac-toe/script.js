@@ -62,11 +62,11 @@ const check_match = () => {
 const check_for_winner = () => {
     let res = check_match()
     if (res == player) {
-        winner.innerText = "Winner is player!!";
+        winner.innerText = "Human is the winner!";
         winner.classList.add("playerWin");
         board_full = true
     } else if (res == computer) {
-        winner.innerText = "Winner is computer";
+        winner.innerText = "AI is the winner!";
         winner.classList.add("computerWin");
         board_full = true
     } else if (board_full) {
@@ -100,8 +100,14 @@ const addPlayerMove = e => {
     }
 };
 
-const addComputerMove = () => {
+const addComputerMove = async () => {
     if (!board_full) {
+        // state = play_board.map((e) => (e == "O")? -1 : (e == "X")? 1 : 0);
+        // action = await policy.predict(state);
+        // selected = toIndex(action)
+        // play_board[selected] = computer;
+        // game_loop();
+
         do {
             selected = Math.floor(Math.random() * 9);
         } while (play_board[selected] != "");
