@@ -102,17 +102,16 @@ const addPlayerMove = e => {
 
 const addComputerMove = async () => {
     if (!board_full) {
-        // state = play_board.map((e) => (e == "O")? -1 : (e == "X")? 1 : 0);
-        // action = await policy.predict(state);
-        // selected = toIndex(action)
+        state = play_board.map((e) => (e == "O")? -1 : (e == "X")? 1 : 0);
+        action = getAction(policy, state)
+        play_board[action] = computer;
+        game_loop();
+
+        // do {
+        //     selected = Math.floor(Math.random() * 9);
+        // } while (play_board[selected] != "");
         // play_board[selected] = computer;
         // game_loop();
-
-        do {
-            selected = Math.floor(Math.random() * 9);
-        } while (play_board[selected] != "");
-        play_board[selected] = computer;
-        game_loop();
     }
 };
 
