@@ -31,5 +31,40 @@
 
 </body>
 <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs/dist/tf.min.js"> </script>
+<script>
+    var policy;
+    (async () =>{
+        policy = await tf.loadLayersModel('./model/model.json');
+    })()
+
+    const getAction = (policy, board) => {
+        let probs = [0, 0, 0,
+                     0, 0, 0,
+                     0, 0 ,0];
+
+        for(let i = 0; i < 9; i++){
+            cell = board[i];
+
+            if(cell == 0){
+                playBoard = [...board];
+                playBoard[i] = 1;
+                probs[i] = Array.from(
+                    policy.predict(tf.tensor([playBoard])).dataSync()
+                )[0];
+            }
+        }
+        maxprob = probs[0];
+        maxi = 0;
+
+        for(let i = 0; i < 9; i++){
+            if(probs[i] > maxprob){
+                maxprob = probs[i];
+                maxi = i;
+            }
+        }
+        
+        return maxi;
+    }
+</script>
 <script src="script.js"></script>
 </html>
