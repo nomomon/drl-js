@@ -1,0 +1,679 @@
+{
+  "nbformat": 4,
+  "nbformat_minor": 0,
+  "metadata": {
+    "colab": {
+      "name": "Tic Tac Toe DRL",
+      "provenance": [],
+      "authorship_tag": "ABX9TyO8b+3TYsR3YGuGBA0hUoKE",
+      "include_colab_link": true
+    },
+    "kernelspec": {
+      "name": "python3",
+      "display_name": "Python 3"
+    },
+    "language_info": {
+      "name": "python"
+    }
+  },
+  "cells": [
+    {
+      "cell_type": "markdown",
+      "metadata": {
+        "id": "view-in-github",
+        "colab_type": "text"
+      },
+      "source": [
+        "<a href=\"https://colab.research.google.com/github/nomomon/drl-js/blob/main/tic-tac-toe/notebookipynb\" target=\"_parent\"><img src=\"https://colab.research.google.com/assets/colab-badge.svg\" alt=\"Open In Colab\"/></a>"
+      ]
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "id": "USBl0Klfol8d"
+      },
+      "source": [
+        "import tensorflow as tf\n",
+        "import numpy as np"
+      ],
+      "execution_count": 1,
+      "outputs": []
+    },
+    {
+      "cell_type": "markdown",
+      "metadata": {
+        "id": "vy5x2wKr8I5h"
+      },
+      "source": [
+        "# Model"
+      ]
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "id": "UWSoqHtCgZDF"
+      },
+      "source": [
+        "policy = tf.keras.Sequential()\n",
+        "\n",
+        "policy.add(tf.keras.layers.Dense(100, activation=tf.nn.relu, input_shape = (9, )))\n",
+        "policy.add(tf.keras.layers.Dropout(0.1))\n",
+        "policy.add(tf.keras.layers.Dense(100, activation=tf.nn.relu))\n",
+        "policy.add(tf.keras.layers.Dropout(0.1))\n",
+        "policy.add(tf.keras.layers.Dense(1, activation=tf.nn.sigmoid))\n",
+        "\n",
+        "\n",
+        "policy.compile(\n",
+        "    optimizer = tf.keras.optimizers.Adam(), \n",
+        "    loss = tf.keras.losses.BinaryCrossentropy(), \n",
+        "    metrics=[tf.keras.metrics.BinaryAccuracy()]\n",
+        ")"
+      ],
+      "execution_count": 68,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "colab": {
+          "base_uri": "https://localhost:8080/"
+        },
+        "id": "xQzy9PFwBynq",
+        "outputId": "8ceff93a-5439-4a3b-fa1c-6226fcc54383"
+      },
+      "source": [
+        "policy.predict([[1, 0, -1, 0, -1, 0, 1, 0, 0]])"
+      ],
+      "execution_count": 69,
+      "outputs": [
+        {
+          "output_type": "execute_result",
+          "data": {
+            "text/plain": [
+              "array([[0.484995]], dtype=float32)"
+            ]
+          },
+          "metadata": {},
+          "execution_count": 69
+        }
+      ]
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "colab": {
+          "base_uri": "https://localhost:8080/"
+        },
+        "id": "5xMcOiKHDgKY",
+        "outputId": "2cb9be27-b0ce-441f-e17a-2da8c09ff858"
+      },
+      "source": [
+        "policy.summary()"
+      ],
+      "execution_count": 70,
+      "outputs": [
+        {
+          "output_type": "stream",
+          "name": "stdout",
+          "text": [
+            "Model: \"sequential_1\"\n",
+            "_________________________________________________________________\n",
+            " Layer (type)                Output Shape              Param #   \n",
+            "=================================================================\n",
+            " dense_10 (Dense)            (None, 100)               1000      \n",
+            "                                                                 \n",
+            " dropout_2 (Dropout)         (None, 100)               0         \n",
+            "                                                                 \n",
+            " dense_11 (Dense)            (None, 100)               10100     \n",
+            "                                                                 \n",
+            " dropout_3 (Dropout)         (None, 100)               0         \n",
+            "                                                                 \n",
+            " dense_12 (Dense)            (None, 1)                 101       \n",
+            "                                                                 \n",
+            "=================================================================\n",
+            "Total params: 11,201\n",
+            "Trainable params: 11,201\n",
+            "Non-trainable params: 0\n",
+            "_________________________________________________________________\n"
+          ]
+        }
+      ]
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "id": "RtDn5YM2Dq6f"
+      },
+      "source": [
+        "# 0 1 2\n",
+        "# 3 4 5\n",
+        "# 6 7 8\n",
+        "\n",
+        "def gameState(board):\n",
+        "    lines = [\n",
+        "        [0, 1, 2],\n",
+        "        [3, 4, 5],\n",
+        "        [6, 7, 8],\n",
+        "        [0, 3, 6],\n",
+        "        [1, 4, 7],\n",
+        "        [2, 5, 8],\n",
+        "        [0, 4, 8],\n",
+        "        [2, 4, 6],\n",
+        "    ]\n",
+        "    for line in lines:\n",
+        "        if (board[line[0]] == board[line[1]] and board[line[1]] == board[line[2]] and board[line[1]] != 0):\n",
+        "            return board[line[1]]\n",
+        "    return 0"
+      ],
+      "execution_count": 71,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "colab": {
+          "base_uri": "https://localhost:8080/"
+        },
+        "id": "1kCvadvILJXb",
+        "outputId": "7cff89be-2381-4b1a-dff3-18801c148164"
+      },
+      "source": [
+        "gameState([0, 0, 0, \n",
+        "           1, 1, 1, \n",
+        "           1, 0, 0])"
+      ],
+      "execution_count": 72,
+      "outputs": [
+        {
+          "output_type": "execute_result",
+          "data": {
+            "text/plain": [
+              "1"
+            ]
+          },
+          "metadata": {},
+          "execution_count": 72
+        }
+      ]
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "id": "oh9XVowvV6zS"
+      },
+      "source": [
+        "def chooseAction(policy, board):\n",
+        "    probs = [0, 0, 0,\n",
+        "             0, 0, 0, \n",
+        "             0, 0, 0]\n",
+        "\n",
+        "    for i, cell in enumerate(board):\n",
+        "        if cell == 0:\n",
+        "            playBoard = board\n",
+        "            playBoard[i] = 1\n",
+        "\n",
+        "            probs[i] = policy.predict([playBoard])[0][0]\n",
+        "\n",
+        "    maxprob = probs[0]\n",
+        "    maxi = 0\n",
+        "\n",
+        "    for i, prob in enumerate(probs):\n",
+        "        if prob >= maxprob:\n",
+        "            maxprob = prob\n",
+        "            maxi = i\n",
+        "\n",
+        "    return maxi"
+      ],
+      "execution_count": 73,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "colab": {
+          "base_uri": "https://localhost:8080/"
+        },
+        "id": "Swim8Yg_XuGH",
+        "outputId": "a1c57484-ecb4-4bc5-bebf-f177af956936"
+      },
+      "source": [
+        "chooseAction(policy, [0, 0, 1,\n",
+        "                      1, 1, 0,\n",
+        "                      0, 0, 1])"
+      ],
+      "execution_count": 74,
+      "outputs": [
+        {
+          "output_type": "execute_result",
+          "data": {
+            "text/plain": [
+              "6"
+            ]
+          },
+          "metadata": {},
+          "execution_count": 74
+        }
+      ]
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "id": "QCMx0nsMYP0p"
+      },
+      "source": [
+        "def getData(policy):\n",
+        "    X_all = []\n",
+        "    y_all = []\n",
+        "    \n",
+        "    X = []\n",
+        "    y = []\n",
+        "\n",
+        "    board = [0, 0, 0,\n",
+        "             0, 0, 0,\n",
+        "             0, 0, 0]\n",
+        "\n",
+        "    winner = 0\n",
+        "\n",
+        "    for i in range(9):\n",
+        "        action = chooseAction(policy, board.copy())\n",
+        "        \n",
+        "        board[action] = 1\n",
+        "\n",
+        "\n",
+        "        X.append(board)\n",
+        "        y.append((i % 2) * 2 - 1)\n",
+        "\n",
+        "        if(gameState(board) != 0):\n",
+        "            winner = (i % 2) * 2 - 1\n",
+        "            break\n",
+        "\n",
+        "        board = (np.array(board) * -1).tolist()\n",
+        "\n",
+        "    y = list(map(lambda q: ((q == winner) - 0), y))\n",
+        "    \n",
+        "    X_all.extend(X)\n",
+        "    y_all.extend(y)\n",
+        "\n",
+        "    X = []\n",
+        "    y = []\n",
+        "\n",
+        "    board = [0, 0, 0,\n",
+        "             0, 0, 0,\n",
+        "             0, 0, 0]\n",
+        "\n",
+        "    winner = 0\n",
+        "\n",
+        "    for i in range(9):\n",
+        "        if(i % 2 == 1):\n",
+        "            action = chooseAction(policy, board.copy())\n",
+        "        else:\n",
+        "            action = np.random.randint(0, 9, size = 1)[0]\n",
+        "            while(board[action] != 0):\n",
+        "                action = np.random.randint(0, 9, size = 1)[0]\n",
+        "\n",
+        "        board[action] = 1\n",
+        "\n",
+        "\n",
+        "        X.append(board)\n",
+        "        y.append((i % 2) * 2 - 1)\n",
+        "\n",
+        "        if(gameState(board) != 0):\n",
+        "            winner = (i % 2) * 2 - 1\n",
+        "            break\n",
+        "\n",
+        "        board = (np.array(board) * -1).tolist()\n",
+        "    \n",
+        "    y = list(map(lambda q: ((q == winner) - 0), y))\n",
+        "\n",
+        "    X_all.extend(X)\n",
+        "    y_all.extend(y)\n",
+        "\n",
+        "    X = []\n",
+        "    y = []\n",
+        "\n",
+        "    board = [0, 0, 0,\n",
+        "             0, 0, 0,\n",
+        "             0, 0, 0]\n",
+        "\n",
+        "    winner = 0\n",
+        "\n",
+        "    for i in range(9):\n",
+        "        if(i % 2 == 0):\n",
+        "            action = chooseAction(policy, board.copy())\n",
+        "        else:\n",
+        "            action = np.random.randint(0, 9, size = 1)[0]\n",
+        "            while(board[action] != 0):\n",
+        "                action = np.random.randint(0, 9, size = 1)[0]\n",
+        "\n",
+        "        board[action] = 1\n",
+        "\n",
+        "\n",
+        "        X.append(board)\n",
+        "        y.append((i % 2) * 2 - 1)\n",
+        "\n",
+        "        if(gameState(board) != 0):\n",
+        "            winner = (i % 2) * 2 - 1\n",
+        "            break\n",
+        "\n",
+        "        board = (np.array(board) * -1).tolist()\n",
+        "    \n",
+        "    y = list(map(lambda q: ((q == winner) - 0), y))\n",
+        "\n",
+        "    X_all.extend(X)\n",
+        "    y_all.extend(y)\n",
+        "\n",
+        "    return X_all, y_all"
+      ],
+      "execution_count": 75,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "colab": {
+          "base_uri": "https://localhost:8080/"
+        },
+        "id": "bwIXutNKZB3y",
+        "outputId": "fdf6d164-18c4-452d-a566-5d657286fe71"
+      },
+      "source": [
+        "getData(policy)"
+      ],
+      "execution_count": 76,
+      "outputs": [
+        {
+          "output_type": "execute_result",
+          "data": {
+            "text/plain": [
+              "([[0, 0, 0, 0, 0, 0, 1, 0, 0],\n",
+              "  [0, 0, 0, 0, 0, 1, -1, 0, 0],\n",
+              "  [0, 1, 0, 0, 0, -1, 1, 0, 0],\n",
+              "  [0, -1, 1, 0, 0, 1, -1, 0, 0],\n",
+              "  [0, 1, -1, 0, 0, -1, 1, 1, 0],\n",
+              "  [1, -1, 1, 0, 0, 1, -1, -1, 0],\n",
+              "  [-1, 1, -1, 0, 1, -1, 1, 1, 0],\n",
+              "  [0, 0, 0, 0, 0, 1, 0, 0, 0],\n",
+              "  [0, 0, 0, 0, 0, -1, 0, 1, 0],\n",
+              "  [0, 0, 1, 0, 0, 1, 0, -1, 0],\n",
+              "  [0, 0, -1, 0, 0, -1, 1, 1, 0],\n",
+              "  [1, 0, 1, 0, 0, 1, -1, -1, 0],\n",
+              "  [-1, 0, -1, 0, 1, -1, 1, 1, 0],\n",
+              "  [1, 0, 1, 0, -1, 1, -1, -1, 1],\n",
+              "  [0, 0, 0, 0, 0, 0, 1, 0, 0],\n",
+              "  [1, 0, 0, 0, 0, 0, -1, 0, 0],\n",
+              "  [-1, 0, 0, 0, 0, 1, 1, 0, 0],\n",
+              "  [1, 0, 0, 0, 1, -1, -1, 0, 0],\n",
+              "  [-1, 1, 0, 0, -1, 1, 1, 0, 0],\n",
+              "  [1, -1, 0, 1, 1, -1, -1, 0, 0],\n",
+              "  [-1, 1, 1, -1, -1, 1, 1, 0, 0],\n",
+              "  [1, -1, -1, 1, 1, -1, -1, 0, 1]],\n",
+              " [1, 0, 1, 0, 1, 0, 1, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1])"
+            ]
+          },
+          "metadata": {},
+          "execution_count": 76
+        }
+      ]
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "colab": {
+          "base_uri": "https://localhost:8080/"
+        },
+        "id": "sJ-6h798fnmE",
+        "outputId": "16fa3743-cd8f-4f1a-c972-82fb26ce71bd"
+      },
+      "source": [
+        "for i in range(100):\n",
+        "    X, y = getData(policy)\n",
+        "    hist = policy.fit(\n",
+        "        X, y, \n",
+        "        epochs = 1, \n",
+        "        verbose = 0\n",
+        "    ).history\n",
+        "\n",
+        "    print(\"epoch {:2} | loss: {:1.5} - acc: {:2.2%}\".format(i, hist[\"loss\"][0], hist[\"binary_accuracy\"][0]))"
+      ],
+      "execution_count": null,
+      "outputs": [
+        {
+          "output_type": "stream",
+          "name": "stdout",
+          "text": [
+            "epoch  0 | loss: 0.69269 - acc: 54.55%\n",
+            "epoch  1 | loss: 0.69262 - acc: 50.00%\n",
+            "epoch  2 | loss: 0.74752 - acc: 45.45%\n",
+            "epoch  3 | loss: 0.66556 - acc: 63.64%\n",
+            "epoch  4 | loss: 0.70568 - acc: 60.00%\n",
+            "epoch  5 | loss: 0.69205 - acc: 78.26%\n",
+            "epoch  6 | loss: 0.68798 - acc: 59.09%\n",
+            "epoch  7 | loss: 0.61578 - acc: 81.82%\n",
+            "epoch  8 | loss: 0.61488 - acc: 86.96%\n",
+            "epoch  9 | loss: 0.59546 - acc: 90.00%\n",
+            "epoch 10 | loss: 0.68808 - acc: 60.87%\n",
+            "epoch 11 | loss: 0.75037 - acc: 33.33%\n",
+            "epoch 12 | loss: 0.7422 - acc: 50.00%\n",
+            "epoch 13 | loss: 0.54999 - acc: 100.00%\n",
+            "epoch 14 | loss: 0.70969 - acc: 43.48%\n",
+            "epoch 15 | loss: 0.69103 - acc: 45.00%\n",
+            "epoch 16 | loss: 0.83233 - acc: 18.18%\n",
+            "epoch 17 | loss: 0.67883 - acc: 70.59%\n",
+            "epoch 18 | loss: 0.59919 - acc: 86.36%\n",
+            "epoch 19 | loss: 0.67987 - acc: 69.57%\n",
+            "epoch 20 | loss: 0.61276 - acc: 71.43%\n",
+            "epoch 21 | loss: 0.67557 - acc: 47.62%\n",
+            "epoch 22 | loss: 0.70011 - acc: 50.00%\n",
+            "epoch 23 | loss: 0.61429 - acc: 85.00%\n",
+            "epoch 24 | loss: 0.62802 - acc: 64.00%\n",
+            "epoch 25 | loss: 0.81255 - acc: 13.04%\n",
+            "epoch 26 | loss: 0.68249 - acc: 45.45%\n",
+            "epoch 27 | loss: 0.77105 - acc: 28.57%\n",
+            "epoch 28 | loss: 0.74458 - acc: 31.82%\n",
+            "epoch 29 | loss: 0.62142 - acc: 71.43%\n",
+            "epoch 30 | loss: 0.69628 - acc: 50.00%\n",
+            "epoch 31 | loss: 0.78349 - acc: 30.43%\n",
+            "epoch 32 | loss: 0.77268 - acc: 27.27%\n",
+            "epoch 33 | loss: 0.6293 - acc: 64.00%\n",
+            "epoch 34 | loss: 0.74149 - acc: 40.00%\n",
+            "epoch 35 | loss: 0.65234 - acc: 47.83%\n",
+            "epoch 36 | loss: 0.74649 - acc: 30.43%\n",
+            "epoch 37 | loss: 0.66475 - acc: 77.78%\n",
+            "epoch 38 | loss: 0.77644 - acc: 28.00%\n",
+            "epoch 39 | loss: 0.72233 - acc: 26.09%\n",
+            "epoch 40 | loss: 0.7838 - acc: 21.74%\n",
+            "epoch 41 | loss: 0.79362 - acc: 36.36%\n",
+            "epoch 42 | loss: 0.6582 - acc: 66.67%\n",
+            "epoch 43 | loss: 0.68581 - acc: 61.54%\n",
+            "epoch 44 | loss: 0.80553 - acc: 38.46%\n",
+            "epoch 45 | loss: 0.60918 - acc: 79.17%\n",
+            "epoch 46 | loss: 0.67475 - acc: 61.54%\n",
+            "epoch 47 | loss: 0.58614 - acc: 84.00%\n",
+            "epoch 48 | loss: 0.67701 - acc: 56.52%\n"
+          ]
+        }
+      ]
+    },
+    {
+      "cell_type": "markdown",
+      "metadata": {
+        "id": "ioprskJo78Ba"
+      },
+      "source": [
+        "# Web demo\n",
+        "\n",
+        "Play against the AI"
+      ]
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "id": "txGyNjHFhlJY"
+      },
+      "source": [
+        "from IPython.display import clear_output \n",
+        "\n",
+        "def symbol(x):\n",
+        "    if x == 1:\n",
+        "        return \"X\"\n",
+        "    elif x == -1:\n",
+        "        return \"O\"\n",
+        "    else:\n",
+        "        return \"?\"\n",
+        "\n",
+        "def printBoard(board):\n",
+        "    clear_output()\n",
+        "    cBoard = list(map(symbol, board))\n",
+        "    for i in range(0, 3):\n",
+        "        row = \"\"\n",
+        "        for j in range(0, 3):\n",
+        "            row += (cBoard[j + i * 3]) if (cBoard[j + i * 3] != \"?\") else str(j + i * 3 + 1)\n",
+        "            if j != 2:\n",
+        "                row += \" | \"\n",
+        "        print(row)\n",
+        "        if i != 2:\n",
+        "            print(\"---------\")\n",
+        "\n",
+        "def play(policy):\n",
+        "    player = (int(input(\"which player you want to be? (1 or 2) \")) + 1) % 2 \n",
+        "\n",
+        "    board = [0, 0, 0,\n",
+        "             0, 0, 0,\n",
+        "             0, 0, 0]\n",
+        "\n",
+        "    winner = 0\n",
+        "\n",
+        "    for i in range(9):\n",
+        "        if (i % 2 == player):\n",
+        "            printBoard(board)\n",
+        "            action = int(input(\"what cell? \")) - 1\n",
+        "        else:\n",
+        "            action = chooseAction(policy, board.copy())\n",
+        "\n",
+        "        board[action] = 1\n",
+        "\n",
+        "        if(gameState(board) != 0):\n",
+        "            winner = i % 2 == player\n",
+        "            break\n",
+        "\n",
+        "        board = (np.array(board) * -1).tolist()\n",
+        "    \n",
+        "    printBoard(board)\n",
+        "    if(gameState(board) != 0):\n",
+        "        print(\"\\nwinner is the\", \"humen\" if winner else \"ai\")\n",
+        "    else:\n",
+        "        print(\"\\nit's a tie!\")"
+      ],
+      "execution_count": 54,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "colab": {
+          "base_uri": "https://localhost:8080/"
+        },
+        "id": "NuGYnTxMkMOd",
+        "outputId": "29c257db-e6b5-429d-aa8b-499cf5135333"
+      },
+      "source": [
+        "play(policy)"
+      ],
+      "execution_count": 57,
+      "outputs": [
+        {
+          "output_type": "stream",
+          "name": "stdout",
+          "text": [
+            "O | O | 3\n",
+            "---------\n",
+            "4 | O | 6\n",
+            "---------\n",
+            "X | X | X\n",
+            "\n",
+            "winner is the humen\n"
+          ]
+        }
+      ]
+    },
+    {
+      "cell_type": "markdown",
+      "metadata": {
+        "id": "8RyU3L043ogp"
+      },
+      "source": [
+        "# Deploy to TF.js"
+      ]
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "colab": {
+          "base_uri": "https://localhost:8080/",
+          "height": 170
+        },
+        "id": "c6h2d--F5EKx",
+        "outputId": "64e56fa4-6bde-4872-c118-0350b6d287bd"
+      },
+      "source": [
+        " pip install tensorflowjs[wizard]"
+      ],
+      "execution_count": 62,
+      "outputs": [
+        {
+          "output_type": "stream",
+          "name": "stdout",
+          "text": [
+            "Successfully installed PyInquirer-1.0.3 prompt-toolkit-1.0.14 tensorflowjs-3.11.0\n"
+          ]
+        },
+        {
+          "output_type": "display_data",
+          "data": {
+            "application/vnd.colab-display-data+json": {
+              "pip_warning": {
+                "packages": [
+                  "prompt_toolkit"
+                ]
+              }
+            }
+          },
+          "metadata": {}
+        }
+      ]
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "id": "bs9QG2hq5UPs"
+      },
+      "source": [
+        "pip install -U ipython"
+      ],
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "id": "eBh6IN3m4O3l"
+      },
+      "source": [
+        "policy.save(\"./model/\")"
+      ],
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "id": "D8mh__hd4wl_"
+      },
+      "source": [
+        "!tensorflowjs_converter --input_format=keras_saved_model /content/model /content/tfjs_model"
+      ],
+      "execution_count": null,
+      "outputs": []
+    }
+  ]
+}
