@@ -30,22 +30,23 @@
     </div>
 
 
-
 </body>
 <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs/dist/tf.min.js"> </script>
 <script>
     var policy;
     (async () =>{
-        policy = await tf.loadLayersModel('./models/proper/model.json');
+        policy = await tf.loadLayersModel('./model/model.json');
     })()
 
     const getAction = (policy, board) => {
+        mask = tf.tensor([board.map(e => (e != 0)? -Infinity: 0)])
+        
         board_ = tf.tensor([board]);
-
         logits = policy.predict(board_);
-        do{
-            action = tf.multinomial(logits, 1).dataSync();
-        }while(board[action] != 0);
+
+        possibleLogits = tf.add(logits, mask)
+        
+        action = tf.multinomial(possibleLogits, 1).dataSync()[0];
 
         return action;
     }
