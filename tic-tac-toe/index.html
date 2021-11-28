@@ -53,12 +53,12 @@
         
         if(Math.random() > eps){
             logits = policy.predict(board_);
-            possibleLogits = tf.add(logits, mask)
+            possibleLogits = tf.add(logits, mask);
         }else{
             possibleLogits = tf.add(
                 tf.scalar(1/9).log(),
                 mask
-            )
+            );
         }
         
         action = tf.multinomial(possibleLogits, 1).dataSync()[0];
